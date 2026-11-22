@@ -55,6 +55,13 @@
     alertaADU: 0.25,         // cambio del ADU frente a la ventana anterior que se resalta
     tasaInv: 0.24,           // costo anual de mantener inventario, como fracción del costo
     diasLento: 30,           // días sin demanda para llamar lento a un artículo
+    abcA: 0.8, abcB: 0.95,   // ABC: participación acumulada del volumen
+    xyzX: 0.6, xyzY: 1,      // XYZ: coeficiente de variación de la demanda diaria
+    fsnF: 0.3, fsnS: 0.1,    // FSN: fracción de días con demanda
+    nsG1: 0.95, nsG2: 0.9, nsG3: 0.8,  // nivel de servicio por grupo de prioridad
+    revision: 30,            // días entre revisiones de las políticas clásicas, si el artículo no tiene ciclo de pedido
+    politicaDespacho: 7,     // días: por debajo, el artículo es candidato a despacho directo
+    ocupacion: 0.8,          // ocupación objetivo de la bodega
     hoy: ''                  // vacío = fecha del sistema
   };
 
@@ -344,6 +351,18 @@
   function clamp0(a) { return a.map(function (v) { return v > 0 ? v : 0; }); }
 
   /* Compite todos los métodos sobre un tramo de prueba y pronostica con el de menor MAD. */
+  // Inversa de la distribución normal estándar (aproximación de Acklam)
+  function normInv(p) {
+    if (!(p > 0 && p < 1)) return 0;
+    var a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239];
+    var b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+    var c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+    var d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416], q, r;
+    if (p < 0.02425) { q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+    if (p > 1 - 0.02425) { q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+    q = p - 0.5; r = q * q;
+    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+  }
   function claveSerie(y) { var t = 0; for (var i = 0; i < y.length; i++) t += y[i] * (i % 7 + 1); return y.length + ':' + Math.round(t); }
   function tramoPrueba(n, s) { return n < 6 ? 1 : Math.max(1, Math.min(Math.floor(n / 4), s >= 52 ? 12 : 6)); }
   function pronosticar(y, s, H, ext) {
@@ -561,6 +580,13 @@
       r.diasSinVenta = 0; for (var dz = N - 1; dz >= 0 && n.serie[dz] === 0; dz--) r.diasSinVenta++;
       r.adu14 = N >= 14 ? mean(n.serie, N - 14, N) : null;
       r.tolerancia = num(a.tolerancia_cliente, null);
+      // Base para la clasificación ABC-XYZ-FSN: volumen, desviación diaria y días con demanda en la ventana
+      var sv = 0, sv2 = 0, dcv = 0;
+      for (var dq = N - w; dq < N; dq++) { var vq = n.serie[dq]; sv += vq; sv2 += vq * vq; if (vq > 0) dcv++; }
+      r.volVentana = sv;
+      r.sigmaDia = w > 1 ? Math.sqrt(Math.max(0, (sv2 - sv * sv / w) / (w - 1))) : 0;
+      r.cvDia = sv > 0 ? r.sigmaDia / (sv / w) : null;
+      r.razonVenta = w ? dcv / w : 0;
       var aduAntes = N >= 2 * w && w ? mean(n.serie, N - 2 * w, N - w) : 0;
       r.cambioADU = aduAntes > 0 ? r.aduPasado / aduAntes - 1 : null;
 
@@ -694,6 +720,30 @@
       r.liberada = libera.get(n.id) || 0;
       r.sincro = depDem > 0 && r.inventario < depDem ? { faltante: depDem - r.inventario, requerido: depDem } : null;
       out.push(r);
+    });
+
+    /* Clasificación ABC (volumen), XYZ (variabilidad diaria) y FSN (frecuencia de movimiento),
+       grupo de prioridad con su nivel de servicio, y las políticas clásicas para comparar con el buffer. */
+    var conCosto = out.every(function (r) { return !(r.volVentana > 0) || r.costo > 0; });
+    var rank = out.filter(function (r) { return r.volVentana > 0; }).map(function (r) { return { r: r, v: r.volVentana * (conCosto ? r.costo : 1) }; });
+    rank.sort(function (a, b) { return b.v - a.v; });
+    var totV = rank.reduce(function (s, x) { return s + x.v; }, 0), acV = 0;
+    rank.forEach(function (x) { acV += x.v; x.r.abc = acV / totV <= S.abcA + 1e-9 ? 'A' : acV / totV <= S.abcB + 1e-9 ? 'B' : 'C'; x.r.partVol = x.v / totV; });
+    out.forEach(function (r) {
+      if (!r.abc) { r.abc = 'D'; r.partVol = 0; }
+      r.xyz = r.cvDia == null ? 'Z' : r.cvDia <= S.xyzX ? 'X' : r.cvDia <= S.xyzY ? 'Y' : 'Z';
+      r.fsn = r.razonVenta >= S.fsnF ? 'F' : r.razonVenta >= S.fsnS ? 'S' : 'N';
+      r.clase = r.abc + r.xyz + r.fsn;
+      r.grupo = r.abc === 'D' || (r.fsn === 'N' && r.abc !== 'A') ? 3 : (r.fsn === 'F' && (r.abc !== 'C' || r.xyz === 'X')) ? 1 : 2;
+      r.nivelServicio = r.grupo === 1 ? S.nsG1 : r.grupo === 2 ? S.nsG2 : S.nsG3;
+      r.cobertura = r.adu > 0 && r.inventario != null ? r.inventario / r.adu : null;
+      if (!r.buffer) return;
+      var k = normInv(r.nivelServicio), L = Math.max(0, r.dlt), Rv = r.ciclo > 0 ? r.ciclo : S.revision, sg = r.sigmaDia * r.daf;
+      var ssL = k * sg * Math.sqrt(L), ssRL = k * sg * Math.sqrt(Rv + L);
+      r.clasico = { k: k, R: Rv, s: r.adu * L + ssL, S: r.adu * (Rv + L) + ssRL, ssL: ssL, ssRL: ssRL };
+      r.clasico.invMinMax = ssL + Math.max(0, r.clasico.S - r.clasico.s) / 2;   // (s,S): seguridad + medio lote
+      r.clasico.invRS = ssRL + r.adu * Rv / 2;                                   // (R,S): seguridad + media revisión
+      r.clasico.estado = r.inventario < r.clasico.s ? 'Bajo el punto de reorden' : r.inventario > r.clasico.S ? 'Sobreinventario' : 'Ideal';
     });
 
     var byId = new Map(); out.forEach(function (r) { byId.set(r.id, r); });

@@ -210,7 +210,19 @@
     var ord = con.slice().sort(function (a, b) { return frec(b) - frec(a); });
     function lista(arr) { return '<table><tr><th>Artículo</th><th>ADU</th><th>Zona verde</th><th>Días entre órdenes</th><th class="l">La verde sale de</th></tr>' + arr.map(function (r) { return '<tr data-item="' + esc(r.id) + '"><td>' + nombre(r) + '</td><td>' + f1(r.adu) + '</td><td>' + f0(r.verde) + '</td><td><b>' + f1(frec(r)) + '</b></td><td class="l">' + esc(r.verdePor) + '</td></tr>'; }).join('') + '</table>'; }
     return '<div class="card"><h3>Índice de flujo</h3><p class="nota" style="margin-top:-4px">Cada barra cuenta los artículos que se piden con esa frecuencia planeada. A la derecha quedan los lentos, casi siempre por un pedido mínimo grande; a la izquierda, los que se piden tan seguido que generan muchas órdenes y alistamientos.</p>' + s +
-      '<div class="grid2" style="margin-top:12px"><div class="tw"><h3>Los más lentos</h3>' + lista(ord.slice(0, 5)) + '</div><div class="tw"><h3>Los más rápidos</h3>' + lista(ord.slice(-5).reverse()) + '</div></div></div>';
+      '<div class="grid2" style="margin-top:12px"><div class="tw"><h3>Los más lentos</h3>' + lista(ord.slice(0, 5)) + '</div><div class="tw"><h3>Los más rápidos</h3>' + lista(ord.slice(-5).reverse()) + '</div></div>' + despacho(con) + '</div>';
+  }
+  // Distribución: ¿despachar directo desde el proveedor o pasar por el nodo central?
+  function despacho(con) {
+    if (st.modo !== 'distribucion') return '';
+    var nodos = con.filter(function (r) { return !r.origen && r.parents.length; });
+    if (!nodos.length) return '';
+    var pol = R.settings.politicaDespacho;
+    return '<div class="tw" style="margin-top:16px"><h3>Despacho directo o desde el nodo central</h3><p class="nota" style="margin-top:-4px">Si el pedido mínimo del proveedor se consume en ' + f0(pol) + ' días o menos, el artículo se mueve lo bastante rápido para despacharlo directo a las sedes; si tarda más, conviene consolidarlo en el nodo central.</p>' +
+      '<table><tr><th>Artículo en el nodo central</th><th>ADU</th><th>Pedido mínimo</th><th>Días que dura el pedido mínimo</th><th class="l">Recomendación</th></tr>' + nodos.map(function (r) {
+        var dias = r.moq > 0 ? r.moq / r.adu : frec(r), directo = dias <= pol;
+        return '<tr data-item="' + esc(r.id) + '"><td>' + nombre(r) + '</td><td>' + f1(r.adu) + '</td><td>' + (r.moq ? f0(r.moq) : '—') + '</td><td>' + f1(dias) + '</td><td class="l"><b style="color:' + (directo ? '#3fa35b' : '#1f5fbf') + '">' + (directo ? 'Candidato a despacho directo' : 'Despachar desde el nodo central') + '</b></td></tr>';
+      }).join('') + '</table></div>';
   }
 
   var TIPOB = { R: 'Reposición', MM: 'Mín-máx', RO: 'Manual' };
@@ -272,10 +284,10 @@
   function vEjec() {
     var rows = filtrar(conBuffer()).sort(function (x, y) { return x.pctRoja - y.pctRoja; });
     var h = '<h2>Ejecución</h2><p class="sub">Las alertas de ejecución sirven para decidir qué órdenes ya abiertas hay que acelerar; no generan órdenes nuevas. El color se mide contra la zona roja: rojo por debajo del ' + pc(R.settings.alertaOH) + ' de ella, amarillo dentro de ella.</p>' +
-      '<div class="barra">' + buscador() + '</div><div class="card tw"><h3>Alertas de estado del buffer</h3><table><tr><th>Artículo</th><th>Inventario hoy</th><th>Disponible</th><th>Zona roja</th><th>% de la zona roja</th><th>Inventario proyectado</th><th>Mínimo proyectado</th><th>Día del mínimo</th><th>Próximo suministro</th><th>Cantidad</th></tr>' +
+      '<div class="barra">' + buscador() + '</div><div class="card tw"><h3>Alertas de estado del buffer</h3><table><tr><th>Artículo</th><th>Inventario hoy</th><th>Disponible</th><th>Zona roja</th><th>% de la zona roja</th><th>Cobertura</th><th>Inventario proyectado</th><th>Mínimo proyectado</th><th>Día del mínimo</th><th>Próximo suministro</th><th>Cantidad</th></tr>' +
       rows.slice(0, MAXF).map(function (r) {
         var p = r.proxSuministro;
-        return '<tr data-item="' + esc(r.id) + '"><td>' + nombre(r) + '</td><td>' + chip(r.colorEjec, NOMBRE[r.colorEjec]) + '</td><td>' + f0(r.inventario) + '</td><td>' + f0(r.tor) + '</td><td>' + pc(r.pctRoja) + '</td><td>' + chip(r.colorProy, NOMBRE[r.colorProy]) + '</td><td>' + f0(r.proyMin) + '</td><td>' + fecha(r.proyDia) + '</td><td>' + (p ? fecha(p.f) : 'Sin orden abierta') + '</td><td>' + (p ? f0(p.q) : '—') + '</td></tr>';
+        return '<tr data-item="' + esc(r.id) + '"><td>' + nombre(r) + '</td><td>' + chip(r.colorEjec, NOMBRE[r.colorEjec]) + '</td><td>' + f0(r.inventario) + '</td><td>' + f0(r.tor) + '</td><td>' + pc(r.pctRoja) + '</td><td>' + (r.cobertura == null ? '—' : f0(r.cobertura) + ' días') + '</td><td>' + chip(r.colorProy, NOMBRE[r.colorProy]) + '</td><td>' + f0(r.proyMin) + '</td><td>' + fecha(r.proyDia) + '</td><td>' + (p ? fecha(p.f) : 'Sin orden abierta') + '</td><td>' + (p ? f0(p.q) : '—') + '</td></tr>';
       }).join('') + '</table><p class="nota" style="margin-top:8px">El inventario proyectado avanza día a día durante un lead time desacoplado: suma los suministros esperados y resta la mayor entre el ADU y la demanda conocida de cada día.</p></div>' + tope(rows);
     var sin = conBuffer().filter(function (r) { return r.sincro; });
     h += '<div class="card tw"><h3>Alertas de sincronización de materiales</h3>' + (sin.length ?
@@ -299,6 +311,36 @@
     if (real.length >= 14) return { d: real, real: true };
     var s = E.simular(r, R, 180);
     return s ? { d: s.dias, real: false } : null;
+  }
+  // Clasificación ABC (volumen), XYZ (variabilidad) y FSN (frecuencia), con grupo de prioridad
+  var CA = { A: 'Alto volumen', B: 'Volumen medio', C: 'Bajo volumen', D: 'Sin volumen' }, CX = { X: 'estable', Y: 'variabilidad media', Z: 'muy variable' }, CF = { F: 'rota rápido', S: 'rota lento', N: 'casi sin movimiento' };
+  var GRUPO = { 1: 'Grupo 1: no debe faltar', 2: 'Grupo 2: puede agotarse a veces', 3: 'Grupo 3: no conviene tenerlo' }, GCOL = { 1: '#3fa35b', 2: '#b8860b', 3: '#d64545' };
+  function vClasificacion(rows) {
+    if (!rows.length) return '';
+    var cuenta = { 1: 0, 2: 0, 3: 0 }, valor = { 1: 0, 2: 0, 3: 0 };
+    rows.forEach(function (r) { cuenta[r.grupo]++; valor[r.grupo] += r.inventario * r.costo; });
+    return '<div class="card tw"><h3>Clasificación ABC · XYZ · FSN</h3><p class="nota" style="margin-top:-4px">ABC ordena por volumen de la ventana (A hasta el ' + pc(R.settings.abcA) + ' acumulado, B hasta el ' + pc(R.settings.abcB) + '). XYZ mide la variabilidad diaria (X hasta un coeficiente de ' + f1(R.settings.xyzX) + ', Y hasta ' + f1(R.settings.xyzY) + '). FSN mira qué fracción de los días hubo demanda (F desde ' + pc(R.settings.fsnF) + ', S desde ' + pc(R.settings.fsnS) + '). Los tres juntos definen el grupo de prioridad y su nivel de servicio.</p>' +
+      '<div class="kpis" style="margin:10px 0">' + [1, 2, 3].map(function (g) { return '<div class="kpi"><b style="color:' + GCOL[g] + '">' + cuenta[g] + '</b><span>' + GRUPO[g] + ' · inventario $ ' + f0(valor[g]) + '</span></div>'; }).join('') + '</div>' +
+      '<table><tr><th>Artículo</th><th>Clase</th><th class="l">Lectura</th><th>% del volumen</th><th>CV diario</th><th>Días con demanda</th><th class="l">Grupo</th><th>Nivel de servicio</th><th>Cobertura</th></tr>' +
+      rows.slice().sort(function (a, b) { return b.partVol - a.partVol; }).slice(0, MAXF).map(function (r) {
+        return '<tr data-item="' + esc(r.id) + '"><td>' + nombre(r) + '</td><td><b>' + r.clase + '</b></td><td class="l">' + CA[r.abc] + ', ' + CX[r.xyz] + ', ' + CF[r.fsn] + '</td><td>' + pc(r.partVol) + '</td><td>' + f2(r.cvDia) + '</td><td>' + pc(r.razonVenta) + '</td><td class="l"><b style="color:' + GCOL[r.grupo] + '">' + GRUPO[r.grupo] + '</b></td><td>' + pc(r.nivelServicio) + '</td><td>' + (r.cobertura == null ? '—' : f0(r.cobertura) + ' días') + '</td></tr>';
+      }).join('') + '</table><p class="nota" style="margin-top:8px">Regla del grupo: 1 si rota rápido y es A o B (o C estable); 3 si no tiene volumen o casi no se mueve y no es A; 2 en los demás casos. Los cortes y niveles de servicio se cambian en Ajustes.</p></div>';
+  }
+  // El buffer frente a las políticas clásicas de inventario, con el mismo consumo y lead time
+  function vPoliticas(rows) {
+    var con = rows.filter(function (r) { return r.clasico; });
+    if (!con.length) return '';
+    var t = { d: 0, m: 0, r: 0 }, est = { 'Bajo el punto de reorden': 0, 'Ideal': 0, 'Sobreinventario': 0 };
+    con.forEach(function (r) { t.d += r.objetivo * r.costo; t.m += r.clasico.invMinMax * r.costo; t.r += r.clasico.invRS * r.costo; est[r.clasico.estado]++; });
+    function dif(v) { return t.d ? (v >= t.d ? '+' : '−') + nf0.format(Math.abs(v / t.d - 1) * 100) + ' % frente al buffer' : ''; }
+    return '<div class="card tw"><h3>El buffer frente a las políticas clásicas</h3><p class="nota" style="margin-top:-4px">Inventario promedio que pediría cada política con el mismo consumo, lead time y nivel de servicio del grupo. Punto de reorden <code>s = ADU × L + k × σ × √L</code>; máximo <code>S = ADU × (R + L) + k × σ × √(R + L)</code>, con R el ciclo de pedido del artículo o ' + f0(R.settings.revision) + ' días.</p>' +
+      '<div class="kpis" style="margin:10px 0"><div class="kpi"><b>$ ' + f0(t.d) + '</b><span>buffers por demanda (roja + verde ÷ 2)</span></div><div class="kpi"><b>$ ' + f0(t.m) + '</b><span>mín-máx (s, S) · ' + dif(t.m) + '</span></div><div class="kpi"><b>$ ' + f0(t.r) + '</b><span>revisión periódica (R, S) · ' + dif(t.r) + '</span></div>' +
+      '<div class="kpi"><b>' + est['Bajo el punto de reorden'] + ' / ' + est.Ideal + ' / ' + est.Sobreinventario + '</b><span>según mín-máx: bajo el punto de reorden / ideal / sobreinventario</span></div></div>' +
+      '<table><tr><th>Artículo</th><th>k</th><th>σ diaria</th><th>Punto de reorden s</th><th>Máximo S</th><th>Disponible</th><th class="l">Lectura mín-máx</th><th>Promedio mín-máx</th><th>Promedio (R, S)</th><th>Promedio buffer</th></tr>' +
+      con.slice(0, MAXF).map(function (r) {
+        var c = r.clasico, col = c.estado === 'Ideal' ? '#3fa35b' : c.estado === 'Sobreinventario' ? '#3b82c4' : '#d64545';
+        return '<tr data-item="' + esc(r.id) + '"><td>' + nombre(r) + '</td><td>' + f2(c.k) + '</td><td>' + f1(r.sigmaDia) + '</td><td>' + f0(c.s) + '</td><td>' + f0(c.S) + '</td><td>' + f0(r.inventario) + '</td><td class="l"><b style="color:' + col + '">' + c.estado + '</b></td><td>' + f0(c.invMinMax) + '</td><td>' + f0(c.invRS) + '</td><td>' + f0(r.objetivo) + '</td></tr>';
+      }).join('') + '</table><p class="nota" style="margin-top:8px">Sirve para mostrar el cambio a quien hoy maneja mín-máx. No es una comparación de servicio: las políticas clásicas reaccionan al inventario disponible, y el buffer al flujo neto.</p></div>';
   }
   function vAnalitica() {
     var rows = filtrar(conBuffer()), datos = [], hayReal = false, haySim = false;
@@ -325,6 +367,7 @@
         var p = frec(x.r), o = x.g.frecReal;
         return '<tr data-item="' + esc(x.r.id) + '"><td>' + nombre(x.r) + '</td><td>' + f1(p) + ' días</td><td>' + (o ? f1(o) + ' días' : '—') + '</td><td>' + (o && p ? f1(o - p) : '—') + '</td><td>' + x.g.ordenes + '</td></tr>';
       }).join('') + '</table><p class="nota" style="margin-top:8px">Si la frecuencia observada es mucho menor que la planeada, se está pidiendo más seguido de lo previsto: el buffer puede estar corto o la demanda creció.</p></div>';
+    h += vClasificacion(rows) + vPoliticas(rows);
     // Movimiento: quién se aceleró y quién dejó de venderse (clave en retail y en productos de vida corta)
     var mov = rows.filter(function (r) { return r.directa; }).map(function (r) { return { r: r, ac: r.aduPasado > 0 && r.adu14 != null ? r.adu14 / r.aduPasado : null }; });
     var rap = mov.filter(function (x) { return x.ac != null && x.ac >= 1.5; }).sort(function (a, b) { return b.ac - a.ac; }).slice(0, 10);
@@ -365,7 +408,7 @@
       '<div class="kpi"><b>$ ' + f0(t.pm) + '</b><span>máximo proyectado, con todos en el tope del rango (hoy $ ' + f0(t.am) + ')</span></div></div>';
     h += '<div class="card tw"><h3>Capital de trabajo y frecuencia de orden por artículo</h3><table><tr><th>Artículo</th><th>ADU hoy</th><th>ADU proy.</th><th>Inv. promedio hoy</th><th>Inv. promedio proy.</th><th>Capital hoy</th><th>Capital proy.</th><th>Diferencia</th><th>Días entre órdenes hoy</th><th>Proy.</th></tr>' + filas + '</table>' +
       '<p class="nota" style="margin-top:8px">Inventario promedio = zona roja + mitad de la verde. Máximo del rango = zona roja + zona verde.</p></div>';
-    h += '<div class="card"><h3>Espacio</h3>' + (hayEst ? '<div class="kpis" style="margin:0"><div class="kpi"><b>' + f0(Math.ceil(t.ea)) + '</b><span>estibas promedio hoy</span></div><div class="kpi"><b>' + f0(Math.ceil(t.ep)) + '</b><span>estibas promedio proyectadas</span></div><div class="kpi"><b>' + f0(Math.ceil(t.eam)) + '</b><span>estibas máximas hoy</span></div><div class="kpi"><b>' + f0(Math.ceil(t.epm)) + '</b><span>estibas máximas proyectadas</span></div></div>'
+    h += '<div class="card"><h3>Espacio</h3>' + (hayEst ? '<div class="kpis" style="margin:0"><div class="kpi"><b>' + f0(Math.ceil(t.ea)) + '</b><span>estibas promedio hoy</span></div><div class="kpi"><b>' + f0(Math.ceil(t.ep)) + '</b><span>estibas promedio proyectadas</span></div><div class="kpi"><b>' + f0(Math.ceil(t.eam)) + '</b><span>estibas máximas hoy</span></div><div class="kpi"><b>' + f0(Math.ceil(t.epm)) + '</b><span>estibas máximas proyectadas</span></div></div><p class="nota" style="margin-top:10px">Para operar al ' + pc(R.settings.ocupacion) + ' de ocupación, la bodega necesitaría <b>' + f0(Math.ceil(t.epm / (R.settings.ocupacion || 1))) + '</b> posiciones de estiba en el escenario proyectado (hoy ' + f0(Math.ceil(t.eam / (R.settings.ocupacion || 1))) + ').</p>'
       : '<p class="nota">Llene la columna und_estiba de la hoja Articulos para proyectar posiciones de estiba.</p>') + '</div>';
     var rec = {}, cap = {};
     (d.recursos || []).forEach(function (x) { cap[x.recurso] = E.num(x.minutos_dia, 0); });
@@ -498,8 +541,11 @@
     if (R.avisos.length) h += '<div class="aviso"><b>Avisos del cálculo</b><br>' + R.avisos.map(esc).join('<br>') + '</div>';
     h += vCarpeta();
     h += '<div class="card"><h3>Carga manual</h3><div class="barra"><label class="btn' + (carpeta.h ? '' : ' pri') + '">Cargar Excel<input type="file" id="archivo" accept=".xlsx,.xls" hidden></label>' +
-      '<button class="btn" data-act="plantilla">Descargar los datos actuales como plantilla</button>' +
       '<button class="btn" data-act="ejemplo">Volver a los datos de ejemplo</button></div>' +
+      '<h3 style="margin-top:6px">Plantillas</h3><div class="barra"><button class="btn" data-act="plMin">Mínima vacía (lo indispensable)</button>' +
+      '<button class="btn" data-act="plComp">Completa vacía (todas las hojas)</button>' +
+      '<button class="btn" data-act="plantilla">Con los datos que ve ahora, como ejemplo lleno</button></div>' +
+      '<p class="nota">Empiece por la mínima: Articulos, Historia, Pedidos y Suministro' + (st.modo === 'produccion' ? ', más Estructura' : '') + '. Cada plantilla trae una hoja «Leame» que explica las columnas. También se aceptan nombres de columna habituales de un ERP, como ItemCode, WhsCode, Quantity o DocDate.</p>' +
       '<p class="nota">' + (d.ejemplo ? 'Datos de ejemplo ficticios. ' : 'Datos cargados por usted. ') + f0(d.articulos.length) + ' artículos · ' + f0((d.estructura || []).length) + ' relaciones de estructura · ' + f0((d.historia || []).length) + ' filas de historia · ' + f0((d.pedidos || []).length) + ' pedidos · ' + f0((d.suministro || []).length) + ' órdenes de suministro.</p></div>';
     Object.keys(COLS).forEach(function (hoja) {
       if (['Estructura', 'Recursos', 'Rutas', 'Festivos'].indexOf(hoja) >= 0 && st.modo !== 'produccion') return;
@@ -518,7 +564,12 @@
     ['fLTcorto', 'Factor de lead time corto', 'num'], ['fLTmedio', 'Factor de lead time medio', 'num'], ['fLTlargo', 'Factor de lead time largo', 'num'],
     ['cvBajoMax', 'Variabilidad baja: CV hasta', 'num'], ['cvMedioMax', 'Variabilidad media: CV hasta', 'num'],
     ['fVarBaja', 'Factor de variabilidad baja', 'num'], ['fVarMedia', 'Factor de variabilidad media', 'num'], ['fVarAlta', 'Factor de variabilidad alta', 'num'],
-    ['picoUmbral', 'Pico calificado: fracción de la zona roja', 'num'], ['alertaOH', 'Alerta roja de inventario: fracción de la zona roja', 'num'], ['alertaADU', 'Alerta de ADU: cambio que se resalta (0,25 = 25 %)', 'num'], ['tasaInv', 'Costo anual de mantener inventario (0,24 = 24 %)', 'num'], ['diasLento', 'Días sin demanda para marcar un artículo como lento', 'num']
+    ['picoUmbral', 'Pico calificado: fracción de la zona roja', 'num'], ['alertaOH', 'Alerta roja de inventario: fracción de la zona roja', 'num'], ['alertaADU', 'Alerta de ADU: cambio que se resalta (0,25 = 25 %)', 'num'], ['tasaInv', 'Costo anual de mantener inventario (0,24 = 24 %)', 'num'], ['diasLento', 'Días sin demanda para marcar un artículo como lento', 'num'],
+    ['abcA', 'ABC: volumen acumulado hasta el que es A', 'num'], ['abcB', 'ABC: volumen acumulado hasta el que es B', 'num'],
+    ['xyzX', 'XYZ: CV diario hasta el que es X', 'num'], ['xyzY', 'XYZ: CV diario hasta el que es Y', 'num'],
+    ['fsnF', 'FSN: fracción de días con demanda desde la que es F', 'num'], ['fsnS', 'FSN: fracción de días con demanda desde la que es S', 'num'],
+    ['nsG1', 'Nivel de servicio del grupo 1', 'num'], ['nsG2', 'Nivel de servicio del grupo 2', 'num'], ['nsG3', 'Nivel de servicio del grupo 3', 'num'],
+    ['revision', 'Políticas clásicas: días entre revisiones', 'num'], ['politicaDespacho', 'Despacho directo: días entre órdenes hasta los que aplica', 'num'], ['ocupacion', 'Ocupación objetivo de la bodega (0,8 = 80 %)', 'num']
   ];
   function vAjustes() {
     var S = R.settings;
@@ -555,6 +606,7 @@
       '<h3>14. Programación de recursos</h3><p>Con la hoja Rutas cada artículo fabricado puede pasar por varias operaciones. La programación es finita y hacia adelante: las órdenes entran por prioridad de buffer, cada operación empieza cuando terminó la anterior y el recurso está libre, y se respetan el alistamiento, los días que trabaja cada recurso y la hoja Festivos.</p>' +
       '<h3>15. Descuentos y llenado de camión</h3><p>Con la hoja Descuentos se compara el ahorro de subir al siguiente escalón de precio con el costo de mantener las unidades adicionales. Con <code>minimo_estibas</code> en la hoja Proveedores, el pedido se completa con estibas enteras del artículo de menor prioridad, sin pasar ninguno del tope verde.</p>' +
       '<h3>16. Retail</h3><p>Con <code>min_exhibicion</code> la zona roja no baja del mínimo de exhibición y las zonas quedan en unidades enteras: roja y verde se redondean hacia arriba y la amarilla al entero más cercano. El libro deja la regla exacta a cada empresa; esta es una regla razonable que usted puede discutir. La pestaña Analítica separa los artículos que se aceleran de los que dejaron de venderse.</p>' +
+      '<h3>17. Clasificación y políticas clásicas</h3><p>La pestaña Analítica clasifica cada artículo por volumen (ABC), variabilidad diaria (XYZ) y frecuencia de movimiento (FSN), y de ahí saca un grupo de prioridad con su nivel de servicio. Con ese nivel calcula lo que pedirían un mín-máx <code>(s, S)</code> y una revisión periódica <code>(R, S)</code>, para comparar su inventario promedio con el del buffer. En distribución, el índice de flujo indica además qué artículos son candidatos a despacho directo.</p>' +
       '<h3>Alcance de esta versión</h3><p>Los artículos sin buffer no se planean aquí: su demanda se traslada a sus componentes. La programación no maneja horas extra, solapes entre operaciones, recursos alternos ni secuencias que minimicen alistamientos. La regresión múltiple con variables externas (precio, clima, promociones) no está incluida porque exige cargar esas variables.</p>' +
       '<p class="nota">DDMRP es una marca del Demand Driven Institute. Esta herramienta es independiente y no está certificada por esa entidad.</p></div></div>';
   }
@@ -599,8 +651,13 @@
   function leerLibro(wb) {
     var hojas = {};
     wb.SheetNames.forEach(function (n) {
-      hojas[norm(n)] = window.XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: '' }).map(function (row) {
-        var o = {}; Object.keys(row).forEach(function (k) { o[norm(k)] = row[k]; }); return o;
+      var nh = norm(n); nh = ALIAS_HOJA[nh] || nh;
+      hojas[nh] = window.XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: '' }).map(function (row) {
+        var o = {}, otros = {};
+        Object.keys(row).forEach(function (k) { var nk = norm(k); if (ALIAS_COL[nk]) otros[ALIAS_COL[nk]] = row[k]; else o[nk] = row[k]; });
+        // Un nombre alterno (por ejemplo ItemCode) solo se usa si la columna estándar no viene
+        Object.keys(otros).forEach(function (k) { if (o[k] === undefined || o[k] === '') o[k] = otros[k]; });
+        return o;
       });
     });
     if (!hojas.articulos || !hojas.articulos.length) throw new Error('El libro no tiene una hoja «Articulos» con filas.');
@@ -659,6 +716,32 @@
   function plantilla() {
     if (!window.XLSX) { st.msg = { t: 'err', h: 'No se pudo cargar el generador de Excel. Revise la conexión a internet y recargue la página.' }; render(); return; }
     window.XLSX.writeFile(libroActual(), 'planeacion-abastecimiento-' + st.modo + '.xlsx');
+  }
+  // Nombres alternos frecuentes en exportaciones de ERP (SAP Business One y similares)
+  var ALIAS_COL = { itemcode: 'sku', codigo: 'sku', codigo_articulo: 'sku', numero_de_articulo: 'sku', articulo: 'sku', referencia: 'sku', item: 'sku',
+    itemname: 'descripcion', dscription: 'descripcion', nombre_articulo: 'descripcion', nombre: 'descripcion', description: 'descripcion',
+    whscode: 'ubicacion', almacen: 'ubicacion', bodega: 'ubicacion', codigobodega: 'ubicacion', sede: 'ubicacion', warehouse: 'ubicacion',
+    quantity: 'cantidad', unidades: 'cantidad', unidadespedido: 'cantidad', qty: 'cantidad', openqty: 'cantidad',
+    docdate: 'fecha', date: 'fecha', fecha_documento: 'fecha', docduedate: 'fecha', fecha_entrega: 'fecha',
+    stock: 'inventario', onhand: 'inventario', disponible: 'inventario', existencia: 'inventario',
+    leadtime: 'lead_time', lt: 'lead_time', minordrqty: 'moq', pedido_minimo: 'moq', ordrmulti: 'multiplo', avgprice: 'costo', costo_unitario: 'costo', cardname: 'proveedor' };
+  var ALIAS_HOJA = { items: 'articulos', maestro: 'articulos', productos: 'articulos', ventas: 'historia', despachos: 'historia', consumo: 'historia', demanda: 'historia',
+    transitos: 'suministro', compras: 'suministro', ordenes_de_compra: 'suministro', ordenes: 'pedidos', pedidos_de_venta: 'pedidos', bom: 'estructura', lista_de_materiales: 'estructura' };
+  // Plantilla vacía: solo encabezados, más una hoja «Leame» que explica cada columna
+  function plantillaVacia(completa) {
+    if (!window.XLSX) { st.msg = { t: 'err', h: 'No se pudo cargar el generador de Excel. Revise la conexión a internet y recargue la página.' }; render(); return; }
+    var X = window.XLSX, wb = X.utils.book_new(), prod = st.modo === 'produccion', leame = [['Hoja', 'Columna', 'Qué va ahí']];
+    var orden = ['Articulos', 'Estructura', 'Historia', 'Pedidos', 'Suministro'].concat(completa ? ['Ajustes', 'Proveedores', 'Descuentos', 'Rangos', 'Perfiles', 'Recursos', 'Rutas', 'Festivos'] : []);
+    var basicas = ['sku', 'descripcion', 'ubicacion', 'origen', 'tipo', 'lead_time', 'moq', 'multiplo', 'ciclo_pedido', 'buffer', 'inventario', 'costo'];
+    orden.forEach(function (h) {
+      if (!prod && ['Estructura', 'Recursos', 'Rutas', 'Festivos'].indexOf(h) >= 0) return;
+      var cols = COLS[h].filter(function (c) { return completa || h !== 'Articulos' || basicas.indexOf(c[0]) >= 0; }).filter(function (c) { return prod || c[0] !== 'recurso' && c[0] !== 'min_und'; }).filter(function (c) { return !prod || c[0] !== 'origen'; });
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([cols.map(function (c) { return c[0]; })]), h);
+      cols.forEach(function (c) { leame.push([h, c[0], c[1]]); });
+    });
+    leame.push(['', '', '']); leame.push(['Nota', '', 'No cambie los nombres de las hojas ni de las columnas. Las columnas que no use puede dejarlas vacías o borrarlas.']);
+    X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(leame), 'Leame');
+    X.writeFile(wb, 'plantilla-' + (completa ? 'completa' : 'minima') + '-' + st.modo + '.xlsx');
   }
   function libroActual() {
     var d = datos(), X = window.XLSX, wb = X.utils.book_new();
@@ -1193,6 +1276,8 @@
       if (a === 'cerrar') { st.sel = null; render(); }
       else if (a === 'csv') csvOrdenes();
       else if (a === 'plantilla') plantilla();
+      else if (a === 'plMin') plantillaVacia(false);
+      else if (a === 'plComp') plantillaVacia(true);
       else if (a === 'ejemplo') { st.datos[st.modo] = null; guardar(); recalc(); st.msg = { t: 'ok', h: 'Se restauraron los datos de ejemplo.' }; render(); }
       else if (a === 'reset') { st.settings = {}; guardar(); recalc(); render(); }
       else if (a === 'jIniciar') { jg.s = J.abrir(J.nuevo(jg.esc)); jg.jugada = true; jg.pista = false; jg.fase = 'jugando'; render(); var ji = $('jPedido'); if (ji) ji.focus(); }

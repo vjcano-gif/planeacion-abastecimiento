@@ -24,6 +24,10 @@ Corre completa en el navegador: los datos que se cargan no salen del computador 
 - **Descuentos por volumen**: compara el ahorro del siguiente escalón de precio con el costo de mantener el inventario adicional.
 - **Programación de recursos**: rutas de varias operaciones, alistamientos, días laborables por recurso y festivos; las órdenes entran por prioridad de buffer.
 - **Retail**: mínimo de exhibición y zonas en unidades enteras; artículos que se aceleran y artículos lentos.
+- **Clasificación ABC · XYZ · FSN**: volumen, variabilidad y frecuencia de movimiento, con grupo de prioridad y nivel de servicio.
+- **Comparación con políticas clásicas**: inventario promedio del buffer frente a mín-máx (s, S) y revisión periódica (R, S).
+- **Despacho directo o desde nodo central**, según cuánto dura el pedido mínimo.
+- **Plantillas**: mínima vacía, completa vacía o llena con ejemplo; acepta nombres de columna habituales de un ERP.
 - **Método**: listas de verificación de posicionamiento, de las pruebas de un buffer estratégico y de DDS&OP.
 - **Posicionamiento**: efecto de poner un buffer nuevo sobre el lead time desacoplado.
 - **Producción**: lista de materiales, puntos de desacople y demanda de componentes a partir de las órdenes de sus padres.
