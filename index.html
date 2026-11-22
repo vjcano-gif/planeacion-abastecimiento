@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlujoLibre — planeación de inventarios por demanda</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo"><i></i><i></i><i></i></span>
+    <div>
+      <strong>FlujoLibre</strong>
+      <small>Planeación por demanda, basada en la metodología DDMRP</small>
+    </div>
+  </div>
+  <div class="modo" id="modo" role="group" aria-label="Enfoque">
+    <button data-modo="produccion">Producción</button>
+    <button data-modo="distribucion">Distribución</button>
+  </div>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<main id="main"></main>
+<aside class="drawer" id="drawer" hidden></aside>
+<footer class="pie">
+  Sus datos se procesan en este navegador y no se envían a ningún servidor. Herramienta libre, sin certificación del Demand Driven Institute.
+</footer>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/sample.js"></script>
+<script src="js/juego.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
