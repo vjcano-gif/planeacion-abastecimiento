@@ -1,4 +1,4 @@
-/* FlujoLibre — interfaz. */
+/* Planeación de Abastecimiento — interfaz. */
 (function () {
   'use strict';
   var E = window.DDEngine, KEY = 'flujolibre.v1', MAXF = 300;
@@ -658,7 +658,7 @@
   }
   function plantilla() {
     if (!window.XLSX) { st.msg = { t: 'err', h: 'No se pudo cargar el generador de Excel. Revise la conexión a internet y recargue la página.' }; render(); return; }
-    window.XLSX.writeFile(libroActual(), 'flujolibre-' + st.modo + '.xlsx');
+    window.XLSX.writeFile(libroActual(), 'planeacion-abastecimiento-' + st.modo + '.xlsx');
   }
   function libroActual() {
     var d = datos(), X = window.XLSX, wb = X.utils.book_new();

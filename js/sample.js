@@ -1,4 +1,4 @@
-/* FlujoLibre — datos de ejemplo (ficticios) para producción y distribución. */
+/* Planeación de Abastecimiento — datos de ejemplo (ficticios) para producción y distribución. */
 (function (root) {
   'use strict';
   var E = root.DDEngine;

@@ -1,4 +1,4 @@
-/* FlujoLibre — motor de cálculo (buffers, flujo neto, pronósticos).
+/* Planeación de Abastecimiento — motor de cálculo (buffers, flujo neto, pronósticos).
    Sin dependencias. Todo corre en el navegador. */
 (function (root) {
   'use strict';

@@ -1,4 +1,4 @@
-/* FlujoLibre — Juego de la cadena: simulación didáctica de una cadena de suministro de tres eslabones.
+/* Planeación de Abastecimiento — Juego de la cadena: simulación didáctica de una cadena de suministro de tres eslabones.
    Cada semana: llegan despachos, se atiende la demanda, y cada eslabón decide cuánto pedir.
    El pedido tarda una semana en ser visto por quien abastece, y el despacho tarda el tiempo de entrega. */
 (function (root) {

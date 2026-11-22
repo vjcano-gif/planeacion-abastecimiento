@@ -1,6 +1,8 @@
-# FlujoLibre
+# Planeación de Abastecimiento
 
 Herramienta libre de planeación de inventarios por demanda, basada en la metodología DDMRP, para empresas de **producción** y de **distribución**.
+
+**Úsela aquí:** https://vjcano-gif.github.io/flujolibre/
 
 Corre completa en el navegador: los datos que se cargan no salen del computador de quien la usa.
 
@@ -52,12 +54,12 @@ MiCarpeta/
 - En **Planeación**, una orden aprobada cuenta como suministro en tránsito y sigue pidiendo a sus componentes u origen hasta que se cierra.
 - Si la carpeta está en una unidad compartida, todo el equipo trabaja sobre los mismos archivos. No hay bloqueo entre usuarios: si dos personas aprueban órdenes al mismo tiempo, gana el último que guarda.
 
-## Publicarla gratis con GitHub Pages
+## Publicar una copia propia con GitHub Pages
 
-1. Cree una cuenta en github.com y un repositorio público, por ejemplo `flujolibre`.
-2. Suba `index.html`, `styles.css`, `README.md` y la carpeta `js`.
+1. Cree una cuenta en github.com y un repositorio público.
+2. Suba `index.html`, `styles.css`, `README.md`, `LICENSE` y la carpeta `js`.
 3. En el repositorio: **Settings → Pages → Branch: main → Save**.
-4. En unos minutos queda disponible en `https://SU-USUARIO.github.io/flujolibre/`.
+4. En unos minutos queda disponible en `https://SU-USUARIO.github.io/NOMBRE-DEL-REPOSITORIO/`.
 
 Para actualizarla, suba los archivos modificados al mismo repositorio; todos los usuarios reciben la versión nueva al recargar.
 
@@ -87,4 +89,4 @@ La app carga desde internet, solo cuando se usan:
 
 ## Licencia
 
-Defina la licencia antes de publicar. MIT es una opción habitual para que cualquiera pueda usarla y modificarla.
+MIT. Cualquiera puede usarla, copiarla y modificarla, conservando el aviso de licencia. Vea el archivo `LICENSE`.
