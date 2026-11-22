@@ -2,7 +2,7 @@
 
 Herramienta libre de planeación de inventarios por demanda, basada en la metodología DDMRP, para empresas de **producción** y de **distribución**.
 
-**Úsela aquí:** https://vjcano-gif.github.io/flujolibre/
+**Úsela aquí:** https://vjcano-gif.github.io/planeacion-abastecimiento/
 
 Corre completa en el navegador: los datos que se cargan no salen del computador de quien la usa.
 
